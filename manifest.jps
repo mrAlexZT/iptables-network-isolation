@@ -1,0 +1,185 @@
+{
+    "name": "Network Isolation Addon",
+    "id": "iptables-isolation",
+    "description": "Environment isolation within the internal network.",
+    "globals": {
+        "repoUser": "jelastic-jps",
+        "iptables_custom_file": "https://github.com/${globals.repoUser}/iptables-network-isolation/raw/master/configs/iptables-custom",
+        "iptables_custom_default": "https://github.com/${globals.repoUser}/iptables-network-isolation/raw/master/configs/iptables-custom-default"
+    },
+    "menu": [{
+        "caption": "Add IP to whitelist",
+        "confirmText": "You are going to add IP to whitelist. Continue?",
+        "loadingText": "Adding IP ...",
+        "action": "add-ip",
+        "settings": "ip",
+        "successText": "The IP has been added successfully."
+    }, {
+        "caption": "Remove IP from whitelist",
+        "confirmText": "You are going to remove IP from whitelist. Continue?",
+        "loadingText": "Removing IP ...",
+        "procedure": "remove-ip",
+        "settings": "ip",
+        "successText": "The IP has been removed successfully."
+    }],
+    "onAfterScaleOut": "update-iptables",
+    "onAfterScaleIn": "update-iptables",
+    "onInstall": [
+        "upload-iptables",
+        "update-iptables"
+    ],
+    "onUninstall": [
+        "restore-iptables"
+    ],
+    "actions": {
+        "update-iptables": {
+            "script": [
+                "nodes = jelastic.env.control.GetEnvInfo('${env.envName}', session).nodes, ips = []",
+                "for (i = 0, n = nodes.length; i < n; i += 1)  ips.push(nodes[i].address)",
+                "return {result: 0, onAfterReturn: { setIpRules: {ipArray: ips.join(';')}}}"
+            ]
+        },
+        "setIpRules": {
+            "forEach(env.nodes)": {
+                "cmd[${@i.id}]": [
+                    "! grep -LE '(JELASTIC_RULES|CUSTOMER_RULES)' /etc/sysconfig/iptables-custom &>/dev/null && curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1",
+                    "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                    "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                    "/usr/bin/jem firewall fwstart",
+                    "truncate -s 0 /tmp/ipArray",
+                    "iptables-save | grep '\\-A INPUT \\-s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* \\-p tcp \\-m state \\-\\-state NEW \\-m tcp \\-\\-dport 22 \\-j ACCEPT' | sed 's/INPUT/JELASTIC_RULES/g' >> /tmp/ipArray",
+                    "cat /etc/resolv.conf | grep -vE '(8.8.8.8|search )' | awk {'print $2'} | while read i; do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
+                    "for i in $(echo \"${this.ipArray}\" | sed -r 's/;/ /g'); do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
+                    "localip=$(ip r g $(awk '($1 == \"nameserver\"){print $2; exit}' /etc/resolv.conf) | awk '{print $NF; exit}');",
+                    "sed -i \"s/^-I INPUT 1 -j JELASTIC_RULES$/-I INPUT 1 -d ${localip} -j JELASTIC_RULES/g\" /etc/sysconfig/iptables-custom",
+                    "sed -i \"s/^-I INPUT 2 -j CUSTOMER_RULES$/-I INPUT 2 -d ${localip} -j CUSTOMER_RULES/g\" /etc/sysconfig/iptables-custom",
+                    "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j JELASTIC_RULES$/r/tmp/ipArray' /etc/sysconfig/iptables-custom",
+                    "/usr/bin/jem firewall fwstart"
+                ],
+                "user": "root"
+            }
+        },
+        "add-ip": {
+            "forEach(env.nodes)": {
+                "cmd[${@i.id}]": [
+                    "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j CUSTOMER_RULES$/a-I CUSTOMER_RULES -s ${this.sourceip} -j ACCEPT' /etc/sysconfig/iptables-custom",
+                    "/usr/bin/jem firewall fwstart"
+                ],
+                "user": "root"
+            }
+        },
+        "remove-ip": {
+            "forEach(env.nodes)": {
+                "cmd[${@i.id}]": [
+                    "sed -i '/^-I CUSTOMER_RULES -s ${this.sourceip} -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                    "/usr/bin/jem firewall fwstart"
+                ],
+                "user": "root"
+            }
+        },
+        "upload-iptables": {
+            "forEach(env.nodes)": {
+                "cmd[${@i.id}]": [
+                    "curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1"
+                ],
+                "user": "root"
+            }
+        },
+        "restore-iptables": {
+            "forEach(env.nodes)": {
+                "cmd[${@i.id}]": [
+                    "truncate -s 0 /etc/sysconfig/iptables-custom",
+                    "curl -sSfL \"${globals.iptables_custom_default}\" -o /etc/sysconfig/iptables-custom 2>&1",
+                    "/usr/bin/jem firewall fwstart"
+                ],
+                "user": "root"
+            }
+        }
+    },
+    "settings": {
+        "ip": {
+            "fields": [{
+                "caption": "IP",
+                "name": "sourceip",
+                "required": true,
+                "type": "string",
+                "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                "regexText": "Not valid IP address"
+            }]
+        }
+    },
+    "success": "Addon was successufully installed!",
+    "logo": "https://raw.githubusercontent.com/jelastic-jps/iptables-network-isolation/master/images/environment-isolation.png",
+    "categories": [
+        "apps/others",
+        "apps/management-and-monitoring"
+    ],
+    "targetNodes": {
+        "nodeType": ["apache",
+            "apache-dockerized",
+            "apache2",
+            "apache2-dockerized",
+            "apache2-python",
+            "apache2-ruby",
+            "apache-lb",
+            "cassandra2",
+            "cassandra3",
+            "centos6",
+            "centos7",
+            "couchdb",
+            "glassfish",
+            "glassfish3",
+            "glassfish4",
+            "haproxy",
+            "jboss7",
+            "jetty6",
+            "jetty8",
+            "jetty9",
+            "mariadb",
+            "mariadb-dockerized",
+            "mariadb10",
+            "maven3",
+            "memcached",
+            "memcached-dockerized",
+            "mongodb",
+            "mongodb2",
+            "mysql5",
+            "neo4j",
+            "neo4j2-1",
+            "neo4j3",
+            "nginx",
+            "nginx-dockerized",
+            "nginxphp",
+            "nginxphp-dockerized",
+            "nginx-ruby",
+            "nodejs",
+            "orientDB",
+            "orientDB2",
+            "Percona",
+            "postgres8",
+            "postgres9",
+            "powerdns",
+            "railo4",
+            "redis",
+            "redis3",
+            "smartfox-server",
+            "tomcat",
+            "tomcat-dockerized",
+            "tomcat6",
+            "tomcat7",
+            "tomcat8",
+            "tomcat85",
+            "tomcat9",
+            "tomee",
+            "tomee-dockerized",
+            "varnish",
+            "varnish-dockerized",
+            "wildfly",
+            "wildfly10",
+            "wildfly9"
+        ]
+    },
+    "version": "0.2",
+    "jpsType": "update",
+    "jpsVersion": "0.99"
+}
