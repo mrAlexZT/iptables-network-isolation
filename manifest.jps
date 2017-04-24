@@ -5,9 +5,6 @@
         "text": "Configures environment isolation within the internal network.\n\n<div class='warning-lower' style='color:#b7c3da'><b>Note:</b> addon installation will replace <a href='https://docs.jelastic.com/setting-custom-firewall'>Custom Firewall Rules</a>.</div>",
         "short": "Configures environment isolation within the internal network."
     },
-    "success": {
-      "text": "Addon has been succcessfully installed and configurations have been applied."
-    },
     "globals": {
         "repoUser": "jelastic-jps",
         "iptables_custom_file": "https://github.com/${globals.repoUser}/iptables-network-isolation/raw/master/configs/iptables-custom",
@@ -47,58 +44,68 @@
         },
         "setIpRules": {
             "forEach(env.nodes)": {
-                "cmd[${@i.id}]": [
-                    "! grep -LE '(JELASTIC_RULES|CUSTOMER_RULES)' /etc/sysconfig/iptables-custom &>/dev/null && curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1",
-                    "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
-                    "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
-                    "/usr/bin/jem firewall fwstart",
-                    "truncate -s 0 /tmp/ipArray",
-                    "iptables-save | grep '\\-A INPUT \\-s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* \\-p tcp \\-m state \\-\\-state NEW \\-m tcp \\-\\-dport 22 \\-j ACCEPT' | sed 's/INPUT/JELASTIC_RULES/g' >> /tmp/ipArray",
-                    "cat /etc/resolv.conf | grep -vE '(8.8.8.8|search )' | awk {'print $2'} | while read i; do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
-                    "for i in $(echo \"${this.ipArray}\" | sed -r 's/;/ /g'); do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
-                    "localip=$(ip r g $(awk '($1 == \"nameserver\"){print $2; exit}' /etc/resolv.conf) | awk '{print $NF; exit}')",
-                    "sed -i \"s/^-I INPUT 1 -j JELASTIC_RULES$/-I INPUT 1 -d ${localip} -j JELASTIC_RULES/g\" /etc/sysconfig/iptables-custom",
-                    "sed -i \"s/^-I INPUT 2 -j CUSTOMER_RULES$/-I INPUT 2 -d ${localip} -j CUSTOMER_RULES/g\" /etc/sysconfig/iptables-custom",
-                    "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j JELASTIC_RULES$/r/tmp/ipArray' /etc/sysconfig/iptables-custom",
-                    "/usr/bin/jem firewall fwstart"
-                ],
-                "user": "root"
+                "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
+                    "cmd[${@i.id}]": [
+                        "! grep -LE '(JELASTIC_RULES|CUSTOMER_RULES)' /etc/sysconfig/iptables-custom &>/dev/null && curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1",
+                        "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                        "sed -i '/^-A JELASTIC_RULES -s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                        "/usr/bin/jem firewall fwstart",
+                        "truncate -s 0 /tmp/ipArray",
+                        "iptables-save | grep '\\-A INPUT \\-s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* \\-p tcp \\-m state \\-\\-state NEW \\-m tcp \\-\\-dport 22 \\-j ACCEPT' | sed 's/INPUT/JELASTIC_RULES/g' >> /tmp/ipArray",
+                        "cat /etc/resolv.conf | grep -vE '(8.8.8.8|search )' | awk {'print $2'} | while read i; do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
+                        "for i in $(echo \"${this.ipArray}\" | sed -r 's/;/ /g'); do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
+                        "localip=$(ip r g $(awk '($1 == \"nameserver\"){print $2; exit}' /etc/resolv.conf) | awk '{print $NF; exit}')",
+                        "sed -i \"s/^-I INPUT 1 -j JELASTIC_RULES$/-I INPUT 1 -d ${localip} -j JELASTIC_RULES/g\" /etc/sysconfig/iptables-custom",
+                        "sed -i \"s/^-I INPUT 2 -j CUSTOMER_RULES$/-I INPUT 2 -d ${localip} -j CUSTOMER_RULES/g\" /etc/sysconfig/iptables-custom",
+                        "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j JELASTIC_RULES$/r/tmp/ipArray' /etc/sysconfig/iptables-custom",
+                        "/usr/bin/jem firewall fwstart"
+                    ],
+                    "user": "root"
+                }
             }
         },
         "add-ip": {
             "forEach(env.nodes)": {
+              "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
                 "cmd[${@i.id}]": [
                     "for ip in $(echo '${this.sourceip}' | sed 's/;/ /g'); do sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j CUSTOMER_RULES$/a-I CUSTOMER_RULES -s '$ip' -j ACCEPT' /etc/sysconfig/iptables-custom; done",
                     "/usr/bin/jem firewall fwstart"
                 ],
                 "user": "root"
+              }
             }
         },
         "remove-ip": {
             "forEach(env.nodes)": {
+              "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
                 "cmd[${@i.id}]": [
                     "for ip in $(echo '${this.sourceip}' | sed 's/;/ /g'); do sed -i '/^-I CUSTOMER_RULES -s '$ip' -j ACCEPT$/ d' /etc/sysconfig/iptables-custom; done",
                     "/usr/bin/jem firewall fwstart"
                 ],
                 "user": "root"
+              }
             }
         },
         "upload-iptables": {
             "forEach(env.nodes)": {
+              "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
                 "cmd[${@i.id}]": [
                     "curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1"
                 ],
                 "user": "root"
+              }
             }
         },
         "restore-iptables": {
             "forEach(env.nodes)": {
+              "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
                 "cmd[${@i.id}]": [
                     "truncate -s 0 /etc/sysconfig/iptables-custom",
                     "curl -sSfL \"${globals.iptables_custom_default}\" -o /etc/sysconfig/iptables-custom 2>&1",
                     "/usr/bin/jem firewall fwstart"
                 ],
                 "user": "root"
+              }
             }
         }
     },
@@ -114,7 +121,7 @@
             }]
         }
     },
-    "success": "Addon was successufully installed!",
+    "success": "IPtables have been successfully applied.",
     "logo": "https://raw.githubusercontent.com/jelastic-jps/iptables-network-isolation/master/images/environment-isolation.png",
     "categories": [
         "apps/others",
