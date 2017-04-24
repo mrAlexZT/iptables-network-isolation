@@ -53,7 +53,7 @@
                     "iptables-save | grep '\\-A INPUT \\-s [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*\\/[[:digit:]]* \\-p tcp \\-m state \\-\\-state NEW \\-m tcp \\-\\-dport 22 \\-j ACCEPT' | sed 's/INPUT/JELASTIC_RULES/g' >> /tmp/ipArray",
                     "cat /etc/resolv.conf | grep -vE '(8.8.8.8|search )' | awk {'print $2'} | while read i; do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
                     "for i in $(echo \"${this.ipArray}\" | sed -r 's/;/ /g'); do echo -A JELASTIC_RULES -s $i -j ACCEPT >> /tmp/ipArray; done",
-                    "localip=$(ip r g $(awk '($1 == \"nameserver\"){print $2; exit}' /etc/resolv.conf) | awk '{print $NF; exit}');",
+                    "localip=$(ip r g $(awk '($1 == \"nameserver\"){print $2; exit}' /etc/resolv.conf) | awk '{print $NF; exit}')",
                     "sed -i \"s/^-I INPUT 1 -j JELASTIC_RULES$/-I INPUT 1 -d ${localip} -j JELASTIC_RULES/g\" /etc/sysconfig/iptables-custom",
                     "sed -i \"s/^-I INPUT 2 -j CUSTOMER_RULES$/-I INPUT 2 -d ${localip} -j CUSTOMER_RULES/g\" /etc/sysconfig/iptables-custom",
                     "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j JELASTIC_RULES$/r/tmp/ipArray' /etc/sysconfig/iptables-custom",
