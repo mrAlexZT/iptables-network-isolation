@@ -2,8 +2,8 @@
     "name": "Network Isolation Addon",
     "id": "iptables-isolation",
     "description": {
-        "text": "Configures environment Isolation within the internal network.\n\nNote: addon installation will replace [Custom Firewall Rules](https://docs.jelastic.com/setting-custom-firewall).",
-        "short": "Configures environment Isolation within the internal network."
+        "text": "Configures environment isolation within the internal network.\n\nNote: addon installation will replace [Custom Firewall Rules](https://docs.jelastic.com/setting-custom-firewall).",
+        "short": "Configures environment isolation within the internal network."
     },
     "globals": {
         "repoUser": "jelastic-jps",
@@ -106,7 +106,7 @@
                 "name": "sourceip",
                 "required": true,
                 "type": "string",
-                "regex": "regex": "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]);?)*$",
+                "regex": "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]);?)*$",
                 "regexText": "Not valid IP address"
             }]
         }
