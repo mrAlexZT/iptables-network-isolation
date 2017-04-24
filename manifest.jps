@@ -62,7 +62,7 @@
         "add-ip": {
             "forEach(env.nodes)": {
                 "cmd[${@i.id}]": [
-                    "sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j CUSTOMER_RULES$/a-I CUSTOMER_RULES -s ${this.sourceip} -j ACCEPT' /etc/sysconfig/iptables-custom",
+                    "for ip in $(echo '${this.sourceip}' | sed 's/;/ /g'); do sed -i '/^-I INPUT [[:digit:]] -d [[:digit:]]*[.][[:digit:]]*[.][[:digit:]]*[.][[:digit:]]* -j CUSTOMER_RULES$/a-I CUSTOMER_RULES -s '$ip' -j ACCEPT' /etc/sysconfig/iptables-custom; done",
                     "/usr/bin/jem firewall fwstart"
                 ],
                 "user": "root"
@@ -71,7 +71,7 @@
         "remove-ip": {
             "forEach(env.nodes)": {
                 "cmd[${@i.id}]": [
-                    "sed -i '/^-I CUSTOMER_RULES -s ${this.sourceip} -j ACCEPT$/ d' /etc/sysconfig/iptables-custom",
+                    "for ip in $(echo '${this.sourceip}' | sed 's/;/ /g'); do sed -i '/^-I CUSTOMER_RULES -s '$ip' -j ACCEPT$/ d' /etc/sysconfig/iptables-custom; done",
                     "/usr/bin/jem firewall fwstart"
                 ],
                 "user": "root"
@@ -103,7 +103,7 @@
                 "name": "sourceip",
                 "required": true,
                 "type": "string",
-                "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                "regex": "regex": "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]);?)*$",
                 "regexText": "Not valid IP address"
             }]
         }
