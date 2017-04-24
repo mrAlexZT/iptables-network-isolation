@@ -1,7 +1,10 @@
 {
     "name": "Network Isolation Addon",
     "id": "iptables-isolation",
-    "description": "Environment isolation within the internal network.",
+    "description": {
+        "text": "Configures environment Isolation within the internal network.\n\nNote: addon installation will replace [Custom Firewall Rules](https://docs.jelastic.com/setting-custom-firewall).",
+        "short": "Configures environment Isolation within the internal network."
+    },
     "globals": {
         "repoUser": "jelastic-jps",
         "iptables_custom_file": "https://github.com/${globals.repoUser}/iptables-network-isolation/raw/master/configs/iptables-custom",
