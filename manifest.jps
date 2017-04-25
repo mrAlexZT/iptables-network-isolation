@@ -90,7 +90,8 @@
             "forEach(env.nodes)": {
               "if ('${@i.nodemission}' != 'vds' && '${@i.nodeType}' != 'docker' && '${@i.nodeType}' != 'storage')": {
                 "cmd[${@i.id}]": [
-                    "curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1"
+                    "curl -sSfL \"${globals.iptables_custom_file}\" -o /etc/sysconfig/iptables-custom 2>&1",
+                    "[ ! -f '/opt/repo/jelastic/jelastic.conf' ] || sed -i 's/^Firewall_Enabled=0$/Firewall_Enabled=1/g' /opt/repo/jelastic/jelastic.conf"
                 ],
                 "user": "root"
               }
